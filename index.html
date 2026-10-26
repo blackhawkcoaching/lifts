@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Lifts</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lifts">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="application-name" content="Lifts">
+<meta name="theme-color" content="#0f1115">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--card2:#20242d;--fg:#e9ecf1;--mut:#8b93a1;--acc:#4f9dff;--ok:#2fbf71;--warn:#f0a43a;--bad:#e5534b;--line:#2a2f3a}
+  @media (prefers-color-scheme: light){:root{--bg:#f3f4f7;--card:#fff;--card2:#eef0f4;--fg:#14171c;--mut:#5d6573;--line:#dde1e8}}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:env(safe-area-inset-top) 0 calc(150px + env(safe-area-inset-bottom))}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 6px;border-bottom:1px solid var(--line)}
+  .row{display:flex;align-items:center;gap:8px}
+  .sp{flex:1}
+  h1{font-size:20px;margin:0}
+  h2{font-size:18px;margin:0}
+  .mut{color:var(--mut);font-size:13px}
+  .pill{font-size:12px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--mut)}
+  .pill.off{background:var(--warn);color:#000}
+  .tabs{display:flex;gap:6px;margin-top:8px}
+  .tabs button{flex:1}
+  button{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:12px;min-height:44px;padding:0 12px}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  button:active{transform:scale(.97)}
+  main{padding:10px 12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
+  .note{background:var(--card2);border-radius:10px;padding:8px 10px;font-size:14px;margin-top:8px;white-space:pre-wrap}
+  .set{display:grid;grid-template-columns:24px 1.3fr 1fr 52px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+  .set:first-of-type{border-top:0}
+  .set.done{opacity:.95}
+  .set.wu{opacity:.62}
+  .set.wu.done{opacity:.8}
+  .set.wu .sn{font-size:13px}
+  .set.wu .step input{font-size:17px;font-weight:600}
+  .set.done .chk{background:var(--ok);border-color:var(--ok);color:#fff}
+  .sn{font-weight:700;text-align:center;color:var(--mut)}
+  .step{display:flex;align-items:center;background:var(--card2);border-radius:12px;border:1px solid var(--line)}
+  .step button{min-width:34px;min-height:48px;border:0;background:transparent;font-size:22px;padding:0}
+  .step input{width:100%;min-width:0;text-align:center;font-family:inherit;font-weight:700;font-size:20px;-moz-appearance:textfield;background:transparent;color:var(--fg);border:0;padding:0}
+  .lbl{font-size:11px;color:var(--mut);text-align:center;margin-top:2px}
+  .chk{min-height:52px;font-size:24px;border-radius:14px}
+  .tgt{grid-column:2/5;font-size:12px;color:var(--mut);margin-top:-4px}
+  .plates{font-size:13px;color:var(--acc);margin-top:4px}
+  .last{font-size:13px;color:var(--mut);margin-top:2px}
+  #timer{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:none}
+  #timer.show{display:block}
+  #timer .t{font:700 34px/1 ui-monospace,Menlo,monospace;min-width:110px}
+  #timer.end .t{color:var(--ok)}
+  .wt{display:flex;gap:8px;align-items:center}
+  .wt input{flex:1;min-height:46px;font-family:inherit;font-weight:600;font-size:20px;text-align:center;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--fg)}
+  svg text{fill:var(--mut);font-size:10px}
+  .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:99px;font-size:14px;z-index:20;display:none}
+  select{font:inherit;min-height:44px;border-radius:12px;background:var(--card2);color:var(--fg);border:1px solid var(--line);padding:0 8px;width:100%}
+  .hidden{display:none}
+  #vSetup{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(20px + env(safe-area-inset-top)) 16px 40px}
+  #vSetup input{width:100%;font:16px ui-monospace,Menlo,monospace;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}
+  #vSetup details{margin-top:18px}
+  #vSetup summary{color:var(--mut);font-size:13px}
+  .gear{min-width:44px;padding:0 10px}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1 id="hdrTitle">Lifts</h1><span class="sp"></span><span id="sync" class="pill">synced</span><button class="gear" onclick="showSetup()" aria-label="Settings">⚙︎</button></div>
+  <div class="tabs"><button id="tabToday" class="on" onclick="show('today')">Today</button><button id="tabHist" onclick="show('hist')">History</button></div>
+</header>
+<main>
+  <section id="vToday">
+    <div class="card">
+      <div class="row"><b>Body weight</b><span class="sp"></span><span id="wLast" class="mut"></span></div>
+      <div class="wt" style="margin-top:8px"><input id="wIn" type="number" inputmode="decimal" step="0.1" placeholder="lb"><button class="pri" onclick="saveWeight()">Save</button></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <button onclick="navDate(-1)" aria-label="previous">‹</button>
+        <div class="sp" style="text-align:center"><h2 id="sTitle">Loading…</h2><div id="sDate" class="mut"></div></div>
+        <button onclick="navDate(1)" aria-label="next">›</button>
+      </div>
+      <div id="sNote" class="note hidden"></div>
+      <div class="row" style="margin-top:8px"><button id="wuToggle" class="sp" onclick="toggleWarmups()">Warm-ups: shown</button></div>
+    </div>
+    <div id="exList"></div>
+    <div class="card"><div class="row"><button onclick="addExercise()" class="sp">+ Add exercise</button></div></div>
+  </section>
+  <section id="vHist" class="hidden"><div id="charts"><div class="card mut">Loading history…</div></div></section>
+</main>
+<div id="timer">
+  <div class="row">
+    <div><div class="mut" id="tLbl">Rest</div><div class="t" id="tVal">0:00</div></div>
+    <span class="sp"></span>
+    <button onclick="adjTimer(-30)">−30</button><button onclick="adjTimer(30)">+30</button><button onclick="stopTimer()">Done</button>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<section id="vSetup" class="hidden">
+  <h1>Lifts setup</h1>
+  <p class="mut" id="setupMsg">Paste your access key once. It stays on this phone only.</p>
+  <input id="keyIn" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="access key">
+  <div class="row"><button class="pri sp" onclick="saveSetup()">Save</button><button id="setupCancel" class="sp" onclick="hideSetup()">Cancel</button></div>
+  <div class="row" style="margin-top:10px"><button id="setupClear" class="sp" onclick="clearKey()">Clear saved key</button></div>
+  <p class="mut">Find the key in Apps Script: run <b>showMyLink</b> and copy it from the Execution log, or open Project Settings &gt; Script properties &gt; ACCESS_KEY.</p>
+  <details><summary>Advanced</summary>
+    <p class="mut">Apps Script web app URL (ends in /exec). Leave blank for the default.</p>
+    <input id="execIn" type="url" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="row"><button class="sp" onclick="saveExec()">Save URL</button></div>
+  </details>
+</section>
+
+<script>
+/* ---------- storage (localStorage may be blocked in some iframes) ---------- */
+var mem = {};
+var store = {
+  get: function(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return k in mem ? mem[k] : d; } },
+  set: function(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ mem[k] = v; } }
+};
+
+var EXEC_DEFAULT = 'https://script.google.com/macros/s/AKfycbxKPLgXxwdjLyh1OlYSMqtoiOk7xEyR-GuFEeqoB-m4cyR1v7cxJw9vhe30Q_F2xVNx/exec';
+var S = { boot:null, exMap:{}, date:null, hist:null };
+(function(){ // one-time key handoff via #k=..., then scrub it from the URL
+  var m = String(location.hash||'').match(/[#&]k=([A-Za-z0-9]+)/);
+  if (m) { store.set('lt_key', m[1]); try { history.replaceState(null, '', location.pathname + location.search); } catch(e){ location.hash=''; } }
+})();
+function execUrl(){ return store.get('lt_exec', '') || EXEC_DEFAULT; }
+function getKey(){ return store.get('lt_key', ''); }
+var API_NAMES = { getBootstrap:'bootstrap', getHistory:'history', logSets:'logSets', logWeight:'logWeight' };
+function api(fn, args, ok, fail){
+  args = args || [];
+  var k = getKey();
+  if (!k) { showSetup(); if (fail) fail(new Error('no key')); return; }
+  var name = API_NAMES[fn], req;
+  if (fn === 'getBootstrap' || fn === 'getHistory') {
+    var u = execUrl() + '?api=' + name + '&k=' + encodeURIComponent(k) + (args[0] ? '&date=' + encodeURIComponent(args[0]) : '') + '&t=' + Date.now();
+    req = fetch(u, { method:'GET', redirect:'follow', credentials:'omit', cache:'no-store' });
+  } else {
+    var body = { k:k, api:name };
+    if (fn === 'logSets') body.items = args[0]; else body.item = args[0];
+    req = fetch(execUrl(), { method:'POST', redirect:'follow', credentials:'omit', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  }
+  req.then(function(r){ return r.text(); }).then(function(t){
+    var j;
+    try { j = JSON.parse(t); } catch(e) { throw new Error(/<html|<!doctype/i.test(t) ? 'server-not-updated' : 'bad response'); }
+    if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+    ok(j.data);
+  }).catch(function(e){
+    var msg = String(e && e.message || e);
+    if (/bad key/.test(msg)) { showSetup('That key was not accepted. Paste the current key from showMyLink.'); }
+    else if (msg === 'server-not-updated') { toast('Server needs the new script version (Deploy > Manage deployments > New version)'); }
+    if (fail) fail(e);
+  });
+}
+function showSetup(msg){
+  document.getElementById('vSetup').classList.remove('hidden');
+  var has = !!getKey();
+  document.getElementById('setupMsg').textContent = msg || (has ? 'A key is saved on this phone. Paste a new one to replace it.' : 'Paste your access key once. It stays on this phone only.');
+  document.getElementById('setupCancel').classList.toggle('hidden', !has);
+  document.getElementById('setupClear').classList.toggle('hidden', !has);
+  document.getElementById('keyIn').value = '';
+  document.getElementById('execIn').value = store.get('lt_exec', '');
+}
+function hideSetup(){ document.getElementById('vSetup').classList.add('hidden'); }
+function saveSetup(){
+  var v = document.getElementById('keyIn').value.replace(/\s+/g, '');
+  var m = v.match(/[?#&]k=([A-Za-z0-9]+)/); if (m) v = m[1]; // accept a pasted link too
+  if (!/^[A-Za-z0-9]{16,}$/.test(v)) { toast('That does not look like a key'); return; }
+  store.set('lt_key', v); hideSetup(); S.boot = null; load(null);
+}
+function clearKey(){
+  if (!confirm('Clear the saved key from this phone? Unsent sets stay queued.')) return;
+  try { localStorage.removeItem('lt_key'); } catch(e) { delete mem.lt_key; }
+  showSetup();
+}
+function saveExec(){
+  var v = document.getElementById('execIn').value.trim();
+  if (v && !/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(v)) { toast('URL must be an Apps Script /exec URL'); return; }
+  store.set('lt_exec', v); toast(v ? 'URL saved' : 'Using default URL');
+}
+if ('serviceWorker' in navigator && location.protocol === 'https:') { navigator.serviceWorker.register('sw.js').catch(function(){}); }
+
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(function(){t.style.display='none';},1800); }
+function uid(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function fmtDate(d){ if(!d) return ''; var p=d.split('-'); var dt=new Date(+p[0],+p[1]-1,+p[2]); return dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }
+function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
+
+/* ---------- boot ---------- */
+function load(date){
+  var cached = store.get('lt_boot_'+(date||'auto'));
+  if (cached && !S.boot) { applyBoot(cached); }
+  api('getBootstrap', [date||null], function(b){ store.set('lt_boot_'+(date||'auto'), b); store.set('lt_boot_'+b.date, b); applyBoot(b); flush(); },
+    function(err){ var em = String(err && err.message || err); if (/bad key|no key/.test(em)) { document.getElementById('sTitle').textContent='Needs your access key (⚙︎)'; } else if (em === 'server-not-updated' && !cached) { document.getElementById('sTitle').textContent='Server not updated yet — redeploy the script'; } else if (!cached) { document.getElementById('sTitle').textContent='Offline — open again with signal'; } setSync(); });
+}
+function applyBoot(b){
+  S.boot = b; S.date = b.date; S.exMap = {};
+  (b.exercises||[]).forEach(function(e){ S.exMap[e.name.toLowerCase()] = e; (e.aliases||[]).forEach(function(a){ S.exMap[a]=e; }); });
+  mergeQueueIntoSession();
+  render();
+}
+function exInfo(name){
+  var e = S.exMap[String(name).toLowerCase()];
+  if (e) return e;
+  var n = String(name).toLowerCase();
+  var bb = /squat|bench|deadlift|press|row/.test(n) && !/db|dumbbell/.test(n);
+  return { name:name, type: bb?'barbell':'other', bar: bb?num(S.boot.settings.bar_weight)||45:0, inc: bb?5:2.5, plateMath: bb, rest:0, chart:false };
+}
+function restFor(g){
+  if (g.rest) return g.rest;
+  var e = exInfo(g.exercise); if (e.rest) return e.rest;
+  var st = S.boot.settings;
+  return e.type==='barbell' ? (num(st.rest_main_sec)||180) : (num(st.rest_accessory_sec)||90);
+}
+
+/* ---------- render Today ---------- */
+function render(){
+  var b = S.boot, s = b.session;
+  document.getElementById('sTitle').textContent = s.title || (s.exercises.length ? 'Session' : 'No session planned');
+  document.getElementById('sDate').textContent = fmtDate(b.date) + (b.date===b.today?' · today':'');
+  var n = document.getElementById('sNote'); n.textContent = s.note||''; n.classList.toggle('hidden', !s.note);
+  var w = b.weights||[]; var lw = w[w.length-1];
+  document.getElementById('wLast').textContent = lw ? ('last '+lw.lb+' lb · '+fmtDate(lw.date)+' · goal '+(b.settings.goal_weight||183)) : 'goal '+(b.settings.goal_weight||183);
+  var showW = warmupsOn();
+  var tg = document.getElementById('wuToggle'); if (tg) tg.textContent = 'Warm-ups: '+(showW?'shown':'hidden');
+  var html = '';
+  s.exercises.forEach(function(g, gi){
+    var e = exInfo(g.exercise);
+    var last = b.last[e.name] || b.last[g.exercise];
+    var exNote = g.sets.map(function(x){return x.note;}).filter(function(x,i,a){return x && a.indexOf(x)===i;});
+    html += '<div class="card"><div class="row"><h2>'+esc(g.exercise)+'</h2><span class="sp"></span><span class="pill">rest '+Math.round(restFor(g)/60*10)/10+'m</span></div>';
+    if (last) html += '<div class="last">Last ('+fmtDate(last.date)+'): '+last.sets.map(function(x){return (x.weight!==''&&x.weight?x.weight+'×':'')+x.reps;}).join(', ')+(last.sets.some(function(x){return x.notes;})?' — '+esc(last.sets.map(function(x){return x.notes;}).filter(String)[0]):'')+'</div>';
+    exNote.forEach(function(t){ html += '<div class="note">'+esc(t)+'</div>'; });
+    if (showW) (g.warmups||[]).forEach(function(x, wi){ html += setRow(gi, 'u'+wi, x, e, true); });
+    g.sets.forEach(function(x, si){ html += setRow(gi, String(si), x, e, false); });
+    html += '<div class="row" style="margin-top:6px"><button class="sp" onclick="addSet('+gi+')">+ Set</button></div></div>';
+  });
+  if (!s.exercises.length) html = '<div class="card mut">Nothing planned for this day. Use ‹ › to move between planned days, or add an exercise.</div>';
+  document.getElementById('exList').innerHTML = html;
+  setSync();
+}
+
+function warmupsOn(){ var o = store.get('lt_showw', null); return o===null ? S.boot.session.showWarmups!==false : !!o; }
+function toggleWarmups(){ store.set('lt_showw', !warmupsOn()); render(); }
+function rowOf(gi, sid){ var g = S.boot.session.exercises[gi]; sid=String(sid); return sid[0]==='u' ? (g.warmups||[])[+sid.slice(1)] : g.sets[+sid]; }
+function setRow(gi, sid, x, e, wu){
+  var d = x.done, a = gi+',\''+sid+'\'', id = gi+'_'+sid;
+  var wv = d ? d.weight : (x._w!=null ? x._w : x.targetWeight);
+  var rv = d ? d.reps : (x._r!=null ? x._r : (parseInt(x.targetReps,10)||''));
+  var tgt = (x.targetWeight!==''||x.targetReps) ? (wu?'Warm-up ':'target ')+(x.targetWeight!==''&&x.targetWeight?x.targetWeight+' × ':'')+esc(x.targetReps) : (wu?'Warm-up':'extra set');
+  if (wu && x.note) tgt += ' · '+esc(x.note);
+  return '<div class="set'+(wu?' wu':'')+(d?' done':'')+'"><div class="sn">'+(wu?'W'+String(x.set).slice(1):x.set)+'</div>'+
+    '<div><div class="step"><button onclick="bump('+a+',\'w\',-1)">−</button><input id="w_'+id+'" type="number" inputmode="decimal" step="any" value="'+esc(wv)+'" oninput="plate('+a+')"><button onclick="bump('+a+',\'w\',1)">+</button></div><div class="lbl">lb</div></div>'+
+    '<div><div class="step"><button onclick="bump('+a+',\'r\',-1)">−</button><input id="r_'+id+'" type="number" inputmode="numeric" value="'+esc(rv)+'"><button onclick="bump('+a+',\'r\',1)">+</button></div><div class="lbl">reps</div></div>'+
+    '<button class="chk" onclick="logSet('+a+')">'+(d?'✓':'○')+'</button>'+
+    '<div></div><div class="tgt">'+tgt+(d&&d.pending?' · <b style="color:var(--warn)">queued</b>':'')+'<div class="plates" id="p_'+id+'">'+plateText(e, wv)+'</div></div>'+
+    '</div>';
+}
+function plateText(e, w){
+  w = num(w);
+  if (!e.plateMath || !w) return '';
+  var bar = e.bar || num(S.boot.settings.bar_weight) || 45;
+  if (w < bar) return 'below bar weight ('+bar+')';
+  if (w === bar) return 'empty bar';
+  var plates = String(S.boot.settings.plates||'45,35,25,10,5,2.5').split(',').map(num).filter(Boolean).sort(function(a,b){return b-a;});
+  var side = (w - bar)/2, rem = side, used = [];
+  plates.forEach(function(p){ while (rem >= p - 1e-9) { used.push(p); rem -= p; } });
+  rem = Math.round(rem*100)/100;
+  return 'per side: '+used.join(' + ')+(rem>0?' (≈, '+rem+' short)':'');
+}
+function plate(gi, si){
+  var g = S.boot.session.exercises[gi]; si = String(si);
+  document.getElementById('p_'+gi+'_'+si).textContent = plateText(exInfo(g.exercise), document.getElementById('w_'+gi+'_'+si).value);
+}
+function bump(gi, si, k, dir){
+  var g = S.boot.session.exercises[gi], x = rowOf(gi, si), e = exInfo(g.exercise);
+  var el = document.getElementById(k+'_'+gi+'_'+si);
+  var v = num(el.value) + dir*(k==='w' ? (e.inc||5) : 1);
+  if (v < 0) v = 0;
+  el.value = Math.round(v*100)/100;
+  if (k==='w') { x._w = el.value; plate(gi,si); } else x._r = el.value;
+}
+
+/* ---------- logging + offline queue ---------- */
+function logSet(gi, si){
+  var b = S.boot, g = b.session.exercises[gi], x = rowOf(gi, si), wu = String(si)[0]==='u';
+  var w = document.getElementById('w_'+gi+'_'+si).value, r = document.getElementById('r_'+gi+'_'+si).value;
+  if (x.done && String(x.done.weight)===String(w) && String(x.done.reps)===String(r)) {
+    if (!confirm('Undo this set?')) return;
+    queue({ clientId:x.done.clientId, date:b.date, exercise:g.exercise, set:x.set, deleted:true });
+    x.done = null; render(); return;
+  }
+  if (!num(r)) { toast('Enter reps'); return; }
+  var item = { clientId: x.done ? x.done.clientId : uid(), date:b.date, session:b.session.session, exercise:g.exercise, set:x.set, weight:w===''?'':num(w), reps:num(r), notes: wu?'Warm-up':'', ts:Date.now() };
+  var wasDone = !!x.done;
+  x.done = { clientId:item.clientId, weight:item.weight, reps:item.reps, pending:true };
+  queue(item);
+  render();
+  if (!wasDone) startTimer(wu ? (num(b.settings.rest_warmup_sec)||60) : restFor(g), g.exercise + (wu?' warm-up':''));
+}
+function queue(item){
+  var q = store.get('lt_queue', []).filter(function(i){ return i.clientId !== item.clientId; });
+  q.push(item); store.set('lt_queue', q); setSync(); flush();
+}
+var flushing = false;
+function flush(){
+  var q = store.get('lt_queue', []);
+  if (!q.length || flushing) { setSync(); return; }
+  if (navigator.onLine === false) { setSync(); return; }
+  flushing = true;
+  api('logSets', [q], function(ids){
+    flushing = false;
+    var left = store.get('lt_queue', []).filter(function(i){ return ids.indexOf(i.clientId) < 0 || q.filter(function(o){return o.clientId===i.clientId && o.ts===i.ts;}).length===0; });
+    store.set('lt_queue', left);
+    var fresh = left.some(function(i){ return !q.some(function(o){ return o.clientId===i.clientId && o.ts===i.ts; }); });
+    if (fresh) setTimeout(flush, 300);
+    if (S.boot) S.boot.session.exercises.forEach(function(g){ g.sets.concat(g.warmups||[]).forEach(function(x){ if (x.done && ids.indexOf(x.done.clientId)>=0 && !left.some(function(l){return l.clientId===x.done.clientId;})) x.done.pending=false; }); });
+    store.set('lt_boot_'+S.date, S.boot);
+    if (S.boot) render(); else setSync();
+  }, function(){ flushing = false; setSync(); });
+}
+function mergeQueueIntoSession(){
+  var q = store.get('lt_queue', []); var s = S.boot.session;
+  q.filter(function(i){ return i.date === S.boot.date; }).forEach(function(i){
+    var g = s.exercises.filter(function(x){ return x.exercise === i.exercise; })[0];
+    if (!g) { g = { exercise:i.exercise, sets:[], warmups:[], rest:null }; s.exercises.push(g); }
+    var isW = /^W\d+$/i.test(String(i.set)), arr = isW ? (g.warmups = g.warmups||[]) : g.sets;
+    var x = arr.filter(function(y){ return String(y.set) === String(i.set); })[0];
+    if (!x) { x = { set:i.set, targetWeight:'', targetReps:'', note:'' }; arr.push(x); }
+    x.done = i.deleted ? null : { clientId:i.clientId, weight:i.weight, reps:i.reps, pending:true };
+  });
+}
+function setSync(){
+  var n = store.get('lt_queue', []).length, el = document.getElementById('sync');
+  el.textContent = n ? (n+' queued') : (navigator.onLine===false ? 'offline' : 'synced');
+  el.classList.toggle('off', !!n || navigator.onLine===false);
+}
+window.addEventListener('online', flush);
+window.addEventListener('offline', setSync);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { flush(); tick(); } });
+setInterval(flush, 30000);
+
+function addSet(gi){
+  var g = S.boot.session.exercises[gi], prev = g.sets[g.sets.length-1] || {};
+  var w = prev.done ? prev.done.weight : prev.targetWeight, r = prev.done ? prev.done.reps : parseInt(prev.targetReps,10);
+  g.sets.push({ set:(prev.set||0)+1, targetWeight:'', targetReps:'', note:'', _w:w==null?'':w, _r:r||'' });
+  render();
+}
+function addExercise(){
+  var names = (S.boot.exercises||[]).map(function(e){return e.name;});
+  var n = prompt('Exercise name'+(names.length?' (e.g. '+names.slice(0,4).join(', ')+')':''));
+  if (!n) return; n = n.trim();
+  var match = names.filter(function(x){ return x.toLowerCase()===n.toLowerCase(); })[0]; if (match) n = match;
+  S.boot.session.exercises.push({ exercise:n, sets:[{ set:1, targetWeight:'', targetReps:'', note:'' }], warmups:[], rest:null });
+  render();
+}
+function navDate(dir){
+  var ds = S.boot.dates.slice(); if (ds.indexOf(S.boot.today)<0) ds.push(S.boot.today); ds.sort();
+  var i = ds.indexOf(S.date), j;
+  if (i < 0) { ds.push(S.date); ds.sort(); i = ds.indexOf(S.date); }
+  j = i + dir; if (j < 0 || j >= ds.length) { toast('No more sessions'); return; }
+  var d = ds[j];
+  var c = store.get('lt_boot_'+d); if (c) applyBoot(c); else document.getElementById('sTitle').textContent = 'Loading…';
+  load(d);
+}
+
+/* ---------- weight ---------- */
+function saveWeight(){
+  var v = num(document.getElementById('wIn').value); if (!v) { toast('Enter weight'); return; }
+  var item = { date:S.boot.today, lb:v };
+  api('logWeight', [item], function(){ toast('Saved '+v+' lb');
+      var w = S.boot.weights.filter(function(x){return x.date!==item.date;}); w.push(item); S.boot.weights = w; document.getElementById('wIn').value=''; render(); S.hist=null; },
+    function(){ toast('Could not save weight — check signal'); });
+}
+
+/* ---------- rest timer ---------- */
+var T = { end:0, h:null, beeped:false };
+function startTimer(sec, label){ T.end = Date.now()+sec*1000; T.beeped=false; document.getElementById('tLbl').textContent='Rest · '+label; document.getElementById('timer').className='show'; clearInterval(T.h); T.h=setInterval(tick,250); tick(); }
+function adjTimer(d){ if (!T.end) return; T.end += d*1000; T.beeped=false; tick(); }
+function stopTimer(){ clearInterval(T.h); T.end=0; document.getElementById('timer').className=''; }
+function tick(){
+  if (!T.end) return;
+  var ms = T.end - Date.now(), el = document.getElementById('timer');
+  var s = Math.max(0, Math.ceil(ms/1000));
+  document.getElementById('tVal').textContent = Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);
+  if (ms <= 0) { el.className='show end'; document.getElementById('tVal').textContent='Go'; if (!T.beeped) { T.beeped=true; beep(); } }
+}
+var actx;
+function beep(){
+  try { navigator.vibrate && navigator.vibrate([300,100,300]); } catch(e){}
+  try { actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.35].forEach(function(t){ var o=actx.createOscillator(), g=actx.createGain(); o.frequency.value=880; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(0.25, actx.currentTime+t); o.start(actx.currentTime+t); o.stop(actx.currentTime+t+0.2); });
+  } catch(e){}
+}
+document.addEventListener('touchstart', function(){ try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); if (actx.state==='suspended') actx.resume(); }catch(e){} }, {once:true});
+
+/* ---------- history ---------- */
+function show(v){
+  document.getElementById('vToday').classList.toggle('hidden', v!=='today');
+  document.getElementById('vHist').classList.toggle('hidden', v!=='hist');
+  document.getElementById('tabToday').classList.toggle('on', v==='today');
+  document.getElementById('tabHist').classList.toggle('on', v==='hist');
+  if (v==='hist') loadHist();
+}
+function loadHist(){
+  var c = store.get('lt_hist'); if (c) renderHist(c);
+  api('getHistory', [], function(h){ store.set('lt_hist', h); renderHist(h); }, function(){ if (!c) document.getElementById('charts').innerHTML='<div class="card mut">History needs a connection.</div>'; });
+}
+function renderHist(h){
+  var html = '';
+  var w = h.weights||[];
+  html += chartCard('Body weight', w.map(function(p){return {x:p.date,y:p.lb};}), {goal:h.goal, unit:'lb', sub: w.length ? ('now '+w[w.length-1].lb+' · goal '+h.goal+' · '+(Math.round((w[w.length-1].lb-h.goal)*10)/10)+' to go') : ''});
+  Object.keys(h.lifts).forEach(function(name){
+    var pts = h.lifts[name]; var e = exInfo(name);
+    var bw = !e.plateMath && pts.every(function(p){ return !p.top; });
+    var series = bw ? pts.map(function(p){return {x:p.date,y:p.bestReps};}) : pts.map(function(p){return {x:p.date,y:p.e1rm};});
+    var best = pts.length ? pts[pts.length-1] : null;
+    var sub = !best ? 'no sets yet' : bw ? ('last: best set '+best.bestReps+' reps, total '+best.totalReps) : ('last top set '+best.top+'×'+best.topReps+' · est 1RM '+best.e1rm);
+    html += chartCard(name + (bw?' (best reps)':' (est. 1RM)'), series, {sub:sub, top: bw?null:pts.map(function(p){return {x:p.date,y:p.top};})});
+  });
+  document.getElementById('charts').innerHTML = html;
+}
+function chartCard(title, pts, o){
+  var W=340,H=150,P=28;
+  var svg='';
+  if (pts.length) {
+    var ys = pts.map(function(p){return p.y;}); if (o.goal) ys.push(o.goal); if (o.top) o.top.forEach(function(p){ if(p.y) ys.push(p.y); });
+    var mn=Math.min.apply(null,ys), mx=Math.max.apply(null,ys); if (mx===mn){mx+=5;mn-=5;} var pad=(mx-mn)*0.12; mn-=pad; mx+=pad; if (mn<0 && Math.min.apply(null,ys)>=0) mn=0;
+    var t0=Date.parse(pts[0].x), t1=Date.parse(pts[pts.length-1].x); if (t1===t0) t1=t0+86400000;
+    function X(d){ return P+(W-P-8)*(Date.parse(d)-t0)/(t1-t0); } function Y(v){ return 8+(H-P)*(1-(v-mn)/(mx-mn)); }
+    svg += '<line x1="'+P+'" y1="'+(H-P+8)+'" x2="'+W+'" y2="'+(H-P+8)+'" stroke="var(--line)"/>';
+    [mn+pad, mx-pad].forEach(function(v){ svg+='<text x="0" y="'+(Y(v)+3)+'">'+Math.round(v)+'</text>'; });
+    if (o.goal) svg += '<line x1="'+P+'" x2="'+W+'" y1="'+Y(o.goal)+'" y2="'+Y(o.goal)+'" stroke="var(--ok)" stroke-dasharray="4 4"/><text x="'+(W-40)+'" y="'+(Y(o.goal)-3)+'">goal</text>';
+    function line(ps, col, dash){ return '<polyline fill="none" stroke="'+col+'" stroke-width="2.5" '+(dash?'stroke-dasharray="3 3"':'')+' points="'+ps.map(function(p){return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1);}).join(' ')+'"/>'+ps.map(function(p){return '<circle r="3.5" fill="'+col+'" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'"/>';}).join(''); }
+    if (o.top) svg += line(o.top.filter(function(p){return p.y;}), 'var(--mut)', true);
+    svg += line(pts, 'var(--acc)');
+    svg += '<text x="'+P+'" y="'+(H+2)+'">'+fmtDate(pts[0].x)+'</text><text x="'+(W-70)+'" y="'+(H+2)+'">'+fmtDate(pts[pts.length-1].x)+'</text>';
+  }
+  return '<div class="card"><h2>'+esc(title)+'</h2><div class="mut">'+esc(o.sub||'')+(o.top?' · dashed = top set':'')+'</div>'+(pts.length?'<svg viewBox="0 0 '+W+' '+(H+6)+'" width="100%">'+svg+'</svg>':'')+'</div>';
+}
+
+if (!getKey()) showSetup();
+load(null);
+</script>
+</body>
+</html>
