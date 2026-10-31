@@ -90,6 +90,7 @@
         <div class="sp" style="text-align:center"><h2 id="sTitle">Loading…</h2><div id="sDate" class="mut"></div></div>
         <button onclick="navDate(1)" aria-label="next">›</button>
       </div>
+      <div class="row" style="margin-top:6px"><select id="sPick" class="sp" onchange="pickDate(this.value)" aria-label="pick session"></select></div>
       <div id="sNote" class="note hidden"></div>
       <div class="row" style="margin-top:8px"><button id="wuToggle" class="sp" onclick="toggleWarmups()">Warm-ups: shown</button></div>
     </div>
@@ -200,14 +201,14 @@ function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
 function load(date){
   var cached = store.get('lt_boot_'+(date||'auto'));
   if (cached && !S.boot) { applyBoot(cached); }
-  api('getBootstrap', [date||null], function(b){ store.set('lt_boot_'+(date||'auto'), b); store.set('lt_boot_'+b.date, b); applyBoot(b); flush(); },
+  api('getBootstrap', [date||null], function(b){ store.set('lt_boot_'+(date||'auto'), b); store.set('lt_boot_'+b.date, b); applyBoot(b); flush(); if (!date) catchUp(b); },
     function(err){ var em = String(err && err.message || err); if (/bad key|no key/.test(em)) { document.getElementById('sTitle').textContent='Needs your access key (⚙︎)'; } else if (em === 'server-not-updated' && !cached) { document.getElementById('sTitle').textContent='Server not updated yet — redeploy the script'; } else if (!cached) { document.getElementById('sTitle').textContent='Offline — open again with signal'; } setSync(); });
 }
 function applyBoot(b){
   S.boot = b; S.date = b.date; S.exMap = {};
   (b.exercises||[]).forEach(function(e){ S.exMap[e.name.toLowerCase()] = e; (e.aliases||[]).forEach(function(a){ S.exMap[a]=e; }); });
   mergeQueueIntoSession();
-  render();
+  render(); fillPick();
 }
 function exInfo(name){
   var e = S.exMap[String(name).toLowerCase()];
@@ -363,6 +364,34 @@ function addExercise(){
   var match = names.filter(function(x){ return x.toLowerCase()===n.toLowerCase(); })[0]; if (match) n = match;
   S.boot.session.exercises.push({ exercise:n, sets:[{ set:1, targetWeight:'', targetReps:'', note:'' }], warmups:[], rest:null });
   render();
+}
+/* catch-up: if recent planned sessions before today were never logged, show the earliest of them (next un-logged session in the rotation) */
+function hasLogged(b){ return b.session.exercises.some(function(g){ return g.sets.concat(g.warmups||[]).some(function(x){ return x.done; }); }); }
+function catchUp(b0){
+  var past = b0.dates.filter(function(d){ return d < b0.today; }).sort().reverse().slice(0,4);
+  var miss = null, i = 0;
+  function step(){
+    if (i >= past.length) return done();
+    var d = past[i++];
+    api('getBootstrap', [d], function(b){
+      store.set('lt_boot_'+d, b);
+      if (!b.session.exercises.length) return step();
+      if (hasLogged(b)) return done();
+      miss = b; step();
+    }, function(){ done(); });
+  }
+  function done(){
+    if (!miss || S.date !== b0.date) return;
+    if (b0.date === b0.today && hasLogged(b0)) return;
+    applyBoot(miss); toast('Showing missed session from '+fmtDate(miss.date));
+  }
+  step();
+}
+function pickDate(d){ if (!d || d===S.date) return; var c = store.get('lt_boot_'+d); if (c) applyBoot(c); else document.getElementById('sTitle').textContent='Loading…'; load(d); }
+function fillPick(){
+  var el = document.getElementById('sPick'); if (!el || !S.boot) return;
+  var ds = S.boot.dates.slice(); if (ds.indexOf(S.boot.today)<0) ds.push(S.boot.today); if (ds.indexOf(S.date)<0) ds.push(S.date); ds.sort();
+  el.innerHTML = ds.map(function(d){ var c = store.get('lt_boot_'+d); var t = c && c.session && c.session.title ? ' · '+c.session.title : ''; return '<option value="'+d+'"'+(d===S.date?' selected':'')+'>'+fmtDate(d)+(d===S.boot.today?' (today)':'')+t+'</option>'; }).join('');
 }
 function navDate(dir){
   var ds = S.boot.dates.slice(); if (ds.indexOf(S.boot.today)<0) ds.push(S.boot.today); ds.sort();

@@ -1,5 +1,5 @@
 // Lifts: caches the app shell only. Never touches Apps Script (data) requests.
-var CACHE = 'lifts-shell-v1';
+var CACHE = 'lifts-shell-v2';
 var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
