@@ -65,6 +65,13 @@
   .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:99px;font-size:14px;z-index:20;display:none}
   select{font:inherit;min-height:44px;border-radius:12px;background:var(--card2);color:var(--fg);border:1px solid var(--line);padding:0 8px;width:100%}
   .hidden{display:none}
+  .picker{position:fixed;inset:0;z-index:25;background:#000a;overflow:auto;padding:calc(12px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom))}
+  .picker-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;max-width:520px;margin:0 auto}
+  #pickerList{max-height:70vh;overflow:auto;margin-top:8px}
+  button.pick-row{display:block;width:100%;text-align:left;margin-top:8px;padding:10px 12px}
+  button.pick-row.cur{border-color:var(--acc)}
+  .pill.open{background:var(--warn);color:#000}
+  .pill.logged{background:var(--ok);color:#fff}
   #vSetup{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(20px + env(safe-area-inset-top)) 16px 40px}
   #vSetup input{width:100%;font:16px ui-monospace,Menlo,monospace;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}
   #vSetup details{margin-top:18px}
@@ -90,7 +97,7 @@
         <div class="sp" style="text-align:center"><h2 id="sTitle">Loading…</h2><div id="sDate" class="mut"></div></div>
         <button onclick="navDate(1)" aria-label="next">›</button>
       </div>
-      <div class="row" style="margin-top:6px"><select id="sPick" class="sp" onchange="pickDate(this.value)" aria-label="pick session"></select></div>
+      <div class="row" style="margin-top:6px"><button id="pickBtn" class="sp" type="button" onclick="openPicker()">Choose workout</button></div>
       <div id="sNote" class="note hidden"></div>
       <div class="row" style="margin-top:8px"><button id="wuToggle" class="sp" onclick="toggleWarmups()">Warm-ups: shown</button></div>
     </div>
@@ -107,6 +114,13 @@
   </div>
 </div>
 <div id="toast" class="toast"></div>
+<div id="picker" class="picker hidden" role="dialog" aria-label="Choose workout" onclick="if (event.target.id==='picker') closePicker()">
+  <div class="picker-card">
+    <div class="row"><h2>Choose workout</h2><span class="sp"></span><button type="button" onclick="closePicker()">Close</button></div>
+    <p class="mut">Recent and upcoming planned sessions.</p>
+    <div id="pickerList"></div>
+  </div>
+</div>
 <section id="vSetup" class="hidden">
   <h1>Lifts setup</h1>
   <p class="mut" id="setupMsg">Paste your access key once. It stays on this phone only.</p>
@@ -130,7 +144,7 @@ var store = {
 };
 
 var EXEC_DEFAULT = 'https://script.google.com/macros/s/AKfycbxKPLgXxwdjLyh1OlYSMqtoiOk7xEyR-GuFEeqoB-m4cyR1v7cxJw9vhe30Q_F2xVNx/exec';
-var S = { boot:null, exMap:{}, date:null, hist:null };
+var S = { boot:null, exMap:{}, date:null, hist:null, req:0, manual:false, known:{} };
 (function(){ // one-time key handoff via #k=..., then scrub it from the URL
   var m = String(location.hash||'').match(/[#&]k=([A-Za-z0-9]+)/);
   if (m) { store.set('lt_key', m[1]); try { history.replaceState(null, '', location.pathname + location.search); } catch(e){ location.hash=''; } }
@@ -177,7 +191,7 @@ function saveSetup(){
   var v = document.getElementById('keyIn').value.replace(/\s+/g, '');
   var m = v.match(/[?#&]k=([A-Za-z0-9]+)/); if (m) v = m[1]; // accept a pasted link too
   if (!/^[A-Za-z0-9]{16,}$/.test(v)) { toast('That does not look like a key'); return; }
-  store.set('lt_key', v); hideSetup(); S.boot = null; load(null);
+  store.set('lt_key', v); hideSetup(); S.boot = null; S.manual = false; S.known = {}; load(null);
 }
 function clearKey(){
   if (!confirm('Clear the saved key from this phone? Unsent sets stay queued.')) return;
@@ -189,7 +203,16 @@ function saveExec(){
   if (v && !/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(v)) { toast('URL must be an Apps Script /exec URL'); return; }
   store.set('lt_exec', v); toast(v ? 'URL saved' : 'Using default URL');
 }
-if ('serviceWorker' in navigator && location.protocol === 'https:') { navigator.serviceWorker.register('sw.js').catch(function(){}); }
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  try { sessionStorage.removeItem('lt_sw_reload'); } catch (e) {}
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && reg.update) reg.update(); });
+  }).catch(function () {});
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    try { if (sessionStorage.getItem('lt_sw_reload') === '1') return; sessionStorage.setItem('lt_sw_reload', '1'); } catch (e) {}
+    location.reload();
+  });
+}
 
 function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(function(){t.style.display='none';},1800); }
 function uid(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
@@ -199,16 +222,38 @@ function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
 
 /* ---------- boot ---------- */
 function load(date){
+  var req = ++S.req;
+  var launch = !date && !S.manual;
   var cached = store.get('lt_boot_'+(date||'auto'));
-  if (cached && !S.boot) { applyBoot(cached); }
-  api('getBootstrap', [date||null], function(b){ store.set('lt_boot_'+(date||'auto'), b); store.set('lt_boot_'+b.date, b); applyBoot(b); flush(); if (!date) catchUp(b); },
-    function(err){ var em = String(err && err.message || err); if (/bad key|no key/.test(em)) { document.getElementById('sTitle').textContent='Needs your access key (⚙︎)'; } else if (em === 'server-not-updated' && !cached) { document.getElementById('sTitle').textContent='Server not updated yet — redeploy the script'; } else if (!cached) { document.getElementById('sTitle').textContent='Offline — open again with signal'; } setSync(); });
+  // Online launch waits for the catch-up decision. Painting the cached "today"
+  // first is what made a missed session look like it never stuck.
+  if (cached && !S.boot) {
+    if (launch && navigator.onLine !== false) document.getElementById('sTitle').textContent = 'Finding your workout…';
+    else applyBoot(cached);
+  }
+  api('getBootstrap', [date||null], function(b){
+    store.set('lt_boot_'+(date||'auto'), b); store.set('lt_boot_'+ymd(b.date), b); rememberBoot(b);
+    if (req !== S.req) return;
+    if (launch) { S.catalog = b; flush(); decideLaunch(b, req); return; }
+    applyBoot(b); flush();
+  }, function(err){
+    var em = String(err && err.message || err);
+    if (/bad key|no key/.test(em)) { document.getElementById('sTitle').textContent='Needs your access key (⚙︎)'; }
+    else if (!S.boot && cached) applyBoot(cached);
+    else if (em === 'server-not-updated' && !S.boot) { document.getElementById('sTitle').textContent='Server not updated yet — redeploy the script'; }
+    else if (!S.boot) { document.getElementById('sTitle').textContent='Offline — open again with signal'; }
+    setSync();
+  });
 }
 function applyBoot(b){
+  if (!b) return;
   S.boot = b; S.date = b.date; S.exMap = {};
+  rememberBoot(b);
   (b.exercises||[]).forEach(function(e){ S.exMap[e.name.toLowerCase()] = e; (e.aliases||[]).forEach(function(a){ S.exMap[a]=e; }); });
   mergeQueueIntoSession();
-  render(); fillPick();
+  render();
+  var picker = document.getElementById('picker');
+  if (picker && !picker.classList.contains('hidden')) renderPicker();
 }
 function exInfo(name){
   var e = S.exMap[String(name).toLowerCase()];
@@ -228,7 +273,7 @@ function restFor(g){
 function render(){
   var b = S.boot, s = b.session;
   document.getElementById('sTitle').textContent = s.title || (s.exercises.length ? 'Session' : 'No session planned');
-  document.getElementById('sDate').textContent = fmtDate(b.date) + (b.date===b.today?' · today':'');
+  document.getElementById('sDate').textContent = dateBits(b);
   var n = document.getElementById('sNote'); n.textContent = s.note||''; n.classList.toggle('hidden', !s.note);
   var w = b.weights||[]; var lw = w[w.length-1];
   document.getElementById('wLast').textContent = lw ? ('last '+lw.lb+' lb · '+fmtDate(lw.date)+' · goal '+(b.settings.goal_weight||183)) : 'goal '+(b.settings.goal_weight||183);
@@ -246,7 +291,7 @@ function render(){
     g.sets.forEach(function(x, si){ html += setRow(gi, String(si), x, e, false); });
     html += '<div class="row" style="margin-top:6px"><button class="sp" onclick="addSet('+gi+')">+ Set</button></div></div>';
   });
-  if (!s.exercises.length) html = '<div class="card mut">Nothing planned for this day. Use ‹ › to move between planned days, or add an exercise.</div>';
+  if (!s.exercises.length) html = '<div class="card mut">Nothing planned for this day. Use ‹ › or Choose workout to open a planned session.</div>';
   document.getElementById('exList').innerHTML = html;
   setSync();
 }
@@ -365,42 +410,176 @@ function addExercise(){
   S.boot.session.exercises.push({ exercise:n, sets:[{ set:1, targetWeight:'', targetReps:'', note:'' }], warmups:[], rest:null });
   render();
 }
-/* catch-up: if recent planned sessions before today were never logged, show the earliest of them (next un-logged session in the rotation) */
-function hasLogged(b){ return b.session.exercises.some(function(g){ return g.sets.concat(g.warmups||[]).some(function(x){ return x.done; }); }); }
-function catchUp(b0){
-  var past = b0.dates.filter(function(d){ return d < b0.today; }).sort().reverse().slice(0,4);
-  var miss = null, i = 0;
-  function step(){
-    if (i >= past.length) return done();
-    var d = past[i++];
-    api('getBootstrap', [d], function(b){
-      store.set('lt_boot_'+d, b);
-      if (!b.session.exercises.length) return step();
-      if (hasLogged(b)) return done();
-      miss = b; step();
-    }, function(){ done(); });
-  }
-  function done(){
-    if (!miss || S.date !== b0.date) return;
-    if (b0.date === b0.today && hasLogged(b0)) return;
-    applyBoot(miss); toast('Showing missed session from '+fmtDate(miss.date));
-  }
-  step();
+/* Launch choice: earliest planned session on or before today, within 7 days, with no work-set log.
+   Warm-ups (set W1, W2, …) do not count. If every session in that window is logged, show today,
+   or the next upcoming planned session when today has none. */
+function ymd(d){ return String(d||'').slice(0,10); }
+function addDays(iso, n){
+  var p = String(iso||'').split('-');
+  if (p.length < 3) return '';
+  var dt = new Date(Date.UTC(+p[0], +p[1]-1, +p[2]));
+  if (isNaN(dt.getTime())) return '';
+  dt.setUTCDate(dt.getUTCDate() + n);
+  var m = dt.getUTCMonth()+1, day = dt.getUTCDate();
+  return dt.getUTCFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day;
 }
-function pickDate(d){ if (!d || d===S.date) return; var c = store.get('lt_boot_'+d); if (c) applyBoot(c); else document.getElementById('sTitle').textContent='Loading…'; load(d); }
-function fillPick(){
-  var el = document.getElementById('sPick'); if (!el || !S.boot) return;
-  var ds = S.boot.dates.slice(); if (ds.indexOf(S.boot.today)<0) ds.push(S.boot.today); if (ds.indexOf(S.date)<0) ds.push(S.date); ds.sort();
-  el.innerHTML = ds.map(function(d){ var c = store.get('lt_boot_'+d); var t = c && c.session && c.session.title ? ' · '+c.session.title : ''; return '<option value="'+d+'"'+(d===S.date?' selected':'')+'>'+fmtDate(d)+(d===S.boot.today?' (today)':'')+t+'</option>'; }).join('');
+function isWarmupSet(x){ return /^W\d+$/i.test(String(x && x.set)); }
+function planned(b){ return !!(b && b.session && b.session.exercises && b.session.exercises.length); }
+function hasWorkLogged(b){
+  if (!b || !b.session) return false;
+  var hit = (b.session.exercises||[]).some(function(g){
+    return (g.sets||[]).some(function(x){ return x.done && !isWarmupSet(x); });
+  });
+  if (hit) return true;
+  var q = store.get('lt_queue', []);
+  return q.some(function(i){
+    if (!i || i.deleted || ymd(i.date) !== ymd(b.date) || isWarmupSet(i)) return false;
+    if (i.session && b.session.session && i.session !== b.session.session) return false;
+    return true;
+  });
+}
+function planDates(list){
+  var seen = {}, out = [];
+  (list||[]).forEach(function(d){ d = ymd(d); if (d && d.length === 10 && !seen[d]) { seen[d] = 1; out.push(d); } });
+  out.sort();
+  return out;
+}
+function rememberBoot(b){ if (b && b.date) S.known[ymd(b.date)] = b; }
+function dateBits(b){
+  var bits = [fmtDate(b.date)];
+  if (b.date && b.today && ymd(b.date) === ymd(b.today)) bits.push('today');
+  else if (b.date && b.today && ymd(b.date) < ymd(b.today) && planned(b) && !hasWorkLogged(b)) bits.push('missed');
+  if (planned(b)) bits.push(hasWorkLogged(b) ? 'logged' : 'not logged');
+  return bits.join(' · ');
+}
+/* boots: date -> bootstrap already loaded. Returns {boot} or {fetch:date} when the next plan isn't loaded. */
+function chooseLaunchBoot(today, dates, boots){
+  today = ymd(today);
+  var start = addDays(today, -7), i, d, b;
+  for (i = 0; i < dates.length; i++){
+    d = dates[i];
+    if (d < start || d > today) continue;
+    b = boots[d];
+    if (!b || !planned(b)) continue;
+    if (!hasWorkLogged(b)) return { boot: b };
+  }
+  if (boots[today] && planned(boots[today])) return { boot: boots[today] };
+  for (i = 0; i < dates.length; i++){
+    d = dates[i];
+    if (d <= today) continue;
+    if (!boots[d]) return { fetch: d };
+    if (planned(boots[d])) return { boot: boots[d] };
+  }
+  return { boot: boots[today] || null };
+}
+function decideLaunch(b0, req){
+  var today = ymd(b0.today || b0.date);
+  var dates = planDates(b0.dates);
+  var start = addDays(today, -7);
+  var need = [], i;
+  for (i = 0; i < dates.length; i++) if (dates[i] >= start && dates[i] <= today && dates[i] !== ymd(b0.date)) need.push(dates[i]);
+  for (i = 0; i < dates.length; i++) if (dates[i] > today) { need.push(dates[i]); break; }
+  var pending = need.length, tried = {};
+  function finish(){
+    if (req !== S.req || S.manual) return;
+    var boots = {}, k;
+    for (k in S.known) if (Object.prototype.hasOwnProperty.call(S.known, k)) boots[k] = S.known[k];
+    boots[ymd(b0.date)] = b0;
+    var choice = chooseLaunchBoot(today, dates, boots);
+    if (choice.fetch) {
+      if (tried[choice.fetch]) { applyBoot(b0); return; }
+      tried[choice.fetch] = 1;
+      api('getBootstrap', [choice.fetch], function(b){
+        store.set('lt_boot_'+ymd(b.date), b); rememberBoot(b);
+        if (ymd(b.date) !== choice.fetch) S.known[choice.fetch] = b;
+        finish();
+      }, function(){ if (req === S.req && !S.manual) applyBoot(b0); });
+      return;
+    }
+    var chosen = choice.boot || b0;
+    applyBoot(chosen);
+    flush();
+    if (ymd(chosen.date) < today && planned(chosen) && !hasWorkLogged(chosen)) toast('Showing missed session from '+fmtDate(chosen.date));
+  }
+  if (!pending) { finish(); return; }
+  need.forEach(function(d){
+    function once(retry){
+      api('getBootstrap', [d], function(b){
+        store.set('lt_boot_'+ymd(b.date), b); rememberBoot(b);
+        if (ymd(b.date) !== d) S.known[d] = b;
+        if (--pending === 0) finish();
+      }, function(){
+        if (retry) { once(false); return; }
+        if (--pending === 0) finish();
+      });
+    }
+    once(true);
+  });
+}
+function planSource(){ return S.boot || S.catalog || null; }
+function pickerDates(){
+  var src = planSource();
+  if (!src) return [];
+  var all = planDates(src.dates);
+  var today = ymd(src.today || S.date);
+  var dates = all.length <= 24 ? all.slice() : all.filter(function(d){ return d >= addDays(today, -14); });
+  if (S.date && dates.indexOf(ymd(S.date)) < 0) dates.push(ymd(S.date));
+  dates.sort();
+  return dates;
+}
+function renderPicker(){
+  var el = document.getElementById('pickerList');
+  var src = planSource();
+  if (!el || !src) return;
+  var today = ymd(src.today), dates = pickerDates();
+  if (!dates.length) { el.innerHTML = '<div class="mut">No planned sessions.</div>'; return; }
+  el.innerHTML = dates.map(function(d){
+    var b = S.known[d] || store.get('lt_boot_'+d);
+    var title = b && b.session ? (b.session.title || b.session.session || '') : '';
+    var label = '…', cls = '';
+    if (b && !planned(b)) { label = 'No plan'; }
+    else if (b && hasWorkLogged(b)) { label = 'Logged'; cls = 'logged'; }
+    else if (b) { label = 'Not logged'; cls = 'open'; }
+    return '<button type="button" class="pick-row'+(d===ymd(S.date)?' cur':'')+'" data-date="'+d+'" onclick="chooseWorkout(\''+d+'\')"><div class="row"><b>'+esc(fmtDate(d))+(d===today?' · today':'')+'</b><span class="sp"></span><span class="pill '+cls+'">'+label+'</span></div>'+(title?'<div class="mut">'+esc(title)+'</div>':'')+'</button>';
+  }).join('');
+}
+function openPicker(){
+  if (!planSource()) { toast('Still loading the plan'); return; }
+  var box = document.getElementById('picker');
+  box.classList.remove('hidden');
+  var dates = pickerDates();
+  dates.forEach(function(d){ var c = store.get('lt_boot_'+d); if (c && !S.known[d]) rememberBoot(c); });
+  renderPicker();
+  dates.forEach(function(d){
+    if (S.known[d]) return;
+    api('getBootstrap', [d], function(b){
+      store.set('lt_boot_'+ymd(b.date), b); rememberBoot(b);
+      if (ymd(b.date) !== d) S.known[d] = b;
+      if (!document.getElementById('picker').classList.contains('hidden')) renderPicker();
+    }, function(){});
+  });
+}
+function closePicker(){ document.getElementById('picker').classList.add('hidden'); }
+function chooseWorkout(d){
+  if (!d) return;
+  S.manual = true;
+  closePicker();
+  var c = S.known[d] || store.get('lt_boot_'+d);
+  if (c) applyBoot(c);
+  else document.getElementById('sTitle').textContent = 'Loading…';
+  load(d);
 }
 function navDate(dir){
-  var ds = S.boot.dates.slice(); if (ds.indexOf(S.boot.today)<0) ds.push(S.boot.today); ds.sort();
-  var i = ds.indexOf(S.date), j;
-  if (i < 0) { ds.push(S.date); ds.sort(); i = ds.indexOf(S.date); }
-  j = i + dir; if (j < 0 || j >= ds.length) { toast('No more sessions'); return; }
-  var d = ds[j];
-  var c = store.get('lt_boot_'+d); if (c) applyBoot(c); else document.getElementById('sTitle').textContent = 'Loading…';
-  load(d);
+  var src = planSource();
+  if (!src) return;
+  var ds = planDates(src.dates), today = ymd(src.today), cur = ymd(S.date || src.date);
+  if (today && ds.indexOf(today) < 0) ds.push(today);
+  ds.sort();
+  var i = ds.indexOf(cur);
+  if (i < 0) { ds.push(cur); ds.sort(); i = ds.indexOf(cur); }
+  var j = i + dir;
+  if (j < 0 || j >= ds.length) { toast('No more sessions'); return; }
+  chooseWorkout(ds[j]);
 }
 
 /* ---------- weight ---------- */
