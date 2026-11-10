@@ -38,6 +38,13 @@
   main{padding:10px 12px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
   .note{background:var(--card2);border-radius:10px;padding:8px 10px;font-size:14px;margin-top:8px;white-space:pre-wrap}
+  .ss{border-left:3px solid var(--acc)}
+  .ss-round{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+  .ss-name{font-weight:700;font-size:16px;margin:8px 0 2px}
+  .round-lbl{font-size:12px;color:var(--mut);font-weight:700;margin-top:2px}
+  .set.station{grid-template-columns:32px 1.3fr 1fr 52px}
+  .ss-add{flex-wrap:wrap}
+  .ss-add button{flex:1 1 100%}
   .set{display:grid;grid-template-columns:24px 1.3fr 1fr 52px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
   .set:first-of-type{border-top:0}
   .set.done{opacity:.95}
@@ -60,7 +67,7 @@
   #timer .t{font:700 34px/1 ui-monospace,Menlo,monospace;min-width:110px}
   #timer.end .t{color:var(--ok)}
   .wt{display:flex;gap:8px;align-items:center}
-  .wt input{flex:1;min-height:46px;font-family:inherit;font-weight:600;font-size:20px;text-align:center;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--fg)}
+  .wt input{flex:1;min-width:0;min-height:46px;font-family:inherit;font-weight:600;font-size:20px;text-align:center;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--fg)}
   svg text{fill:var(--mut);font-size:10px}
   .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:99px;font-size:14px;z-index:20;display:none}
   select{font:inherit;min-height:44px;border-radius:12px;background:var(--card2);color:var(--fg);border:1px solid var(--line);padding:0 8px;width:100%}
@@ -135,6 +142,7 @@
   </details>
 </section>
 
+<script src="plan.js"></script>
 <script>
 /* ---------- storage (localStorage may be blocked in some iframes) ---------- */
 var mem = {};
@@ -262,12 +270,25 @@ function exInfo(name){
   var bb = /squat|bench|deadlift|press|row/.test(n) && !/db|dumbbell/.test(n);
   return { name:name, type: bb?'barbell':'other', bar: bb?num(S.boot.settings.bar_weight)||45:0, inc: bb?5:2.5, plateMath: bb, rest:0, chart:false };
 }
-function restFor(g){
-  if (g.rest) return g.rest;
-  var e = exInfo(g.exercise); if (e.rest) return e.rest;
-  var st = S.boot.settings;
-  return e.type==='barbell' ? (num(st.rest_main_sec)||180) : (num(st.rest_accessory_sec)||90);
+function catalogType(name){
+  var e = S.exMap[String(name).toLowerCase()];
+  return e && e.type ? e.type : '';
 }
+function planOpts(g){
+  var e = exInfo(g.exercise), st = (S.boot && S.boot.settings) || {};
+  var typeDefault = e.type==='barbell' ? (num(st.rest_main_sec)||180) : (num(st.rest_accessory_sec)||90);
+  return { exerciseRest: g.rest || null, catalogRest: e.rest || null, typeDefault: typeDefault };
+}
+function aliasMap(){
+  var m = {};
+  (S.boot.exercises||[]).forEach(function(e){
+    var names = [e.name].concat(e.aliases||[]);
+    names.forEach(function(n){ m[String(n).toLowerCase()] = names; });
+  });
+  return m;
+}
+function blockOpts(){ return { aliases: aliasMap() }; }
+function restText(g, i){ return LiftPlan.formatRest(LiftPlan.restForSet(g.sets, i, planOpts(g))); }
 
 /* ---------- render Today ---------- */
 function render(){
@@ -280,32 +301,93 @@ function render(){
   var showW = warmupsOn();
   var tg = document.getElementById('wuToggle'); if (tg) tg.textContent = 'Warm-ups: '+(showW?'shown':'hidden');
   var html = '';
-  s.exercises.forEach(function(g, gi){
-    var e = exInfo(g.exercise);
-    var last = b.last[e.name] || b.last[g.exercise];
-    var exNote = g.sets.map(function(x){return x.note;}).filter(function(x,i,a){return x && a.indexOf(x)===i;});
-    html += '<div class="card"><div class="row"><h2>'+esc(g.exercise)+'</h2><span class="sp"></span><span class="pill">rest '+Math.round(restFor(g)/60*10)/10+'m</span></div>';
-    if (last) html += '<div class="last">Last ('+fmtDate(last.date)+'): '+last.sets.map(function(x){return (x.weight!==''&&x.weight?x.weight+'×':'')+x.reps;}).join(', ')+(last.sets.some(function(x){return x.notes;})?' — '+esc(last.sets.map(function(x){return x.notes;}).filter(String)[0]):'')+'</div>';
-    exNote.forEach(function(t){ html += '<div class="note">'+esc(t)+'</div>'; });
-    if (showW) (g.warmups||[]).forEach(function(x, wi){ html += setRow(gi, 'u'+wi, x, e, true); });
-    g.sets.forEach(function(x, si){ html += setRow(gi, String(si), x, e, false); });
-    html += '<div class="row" style="margin-top:6px"><button class="sp" onclick="addSet('+gi+')">+ Set</button></div></div>';
+  LiftPlan.sessionBlocks(s.exercises, blockOpts()).forEach(function(block){
+    html += block.kind==='superset' ? supersetCard(b, block, showW) : exerciseCard(b, block.indexes[0], showW, false);
   });
   if (!s.exercises.length) html = '<div class="card mut">Nothing planned for this day. Use ‹ › or Choose workout to open a planned session.</div>';
   document.getElementById('exList').innerHTML = html;
   setSync();
 }
 
+function exerciseNotes(g, strip){
+  var seen = {}, out = [];
+  (g.sets||[]).forEach(function(x){
+    var t = strip ? LiftPlan.displayNote(x.note) : String(x.note||'').trim();
+    if (t && !seen[t]) { seen[t] = 1; out.push(t); }
+  });
+  return out;
+}
+function lastLine(b, g){
+  var e = exInfo(g.exercise), last = b.last[e.name] || b.last[g.exercise];
+  if (!last) return '';
+  return '<div class="last">Last ('+fmtDate(last.date)+'): '+last.sets.map(function(x){return (x.weight!==''&&x.weight?x.weight+'×':'')+x.reps;}).join(', ')+(last.sets.some(function(x){return x.notes;})?' — '+esc(last.sets.map(function(x){return x.notes;}).filter(String)[0]):'')+'</div>';
+}
+function exerciseCard(b, gi, showW, nested){
+  var g = b.session.exercises[gi], e = exInfo(g.exercise);
+  var vary = LiftPlan.restsVary(g.sets, planOpts(g));
+  var html = nested ? '' : '<div class="card">';
+  html += '<div class="row"><h2>'+esc(g.exercise)+'</h2><span class="sp"></span><span class="pill">'+(vary ? 'rest per set' : 'rest '+restText(g, 0))+'</span></div>';
+  html += lastLine(b, g);
+  exerciseNotes(g, false).forEach(function(t){ html += '<div class="note">'+esc(t)+'</div>'; });
+  if (showW) LiftPlan.visibleWarmups(g.warmups, g.exercise, catalogType(g.exercise)).forEach(function(x){
+    var idx = (g.warmups||[]).indexOf(x);
+    html += setRow(gi, 'u'+idx, x, e, true, '', '');
+  });
+  g.sets.forEach(function(x, si){ html += setRow(gi, String(si), x, e, false, '', vary ? restText(g, si) : ''); });
+  html += '<div class="row" style="margin-top:6px"><button class="sp" onclick="addSet('+gi+')">+ Set</button></div>';
+  if (!nested) html += '</div>';
+  return html;
+}
+function supersetCard(b, block, showW){
+  var list = b.session.exercises, ids = block.indexes, letter = block.letter;
+  var max = 0, r;
+  ids.forEach(function(gi){ max = Math.max(max, (list[gi].sets||[]).length); });
+  var rests = [];
+  for (r = 0; r < max; r++) rests.push(LiftPlan.roundRestSeconds(list, ids, r, planOpts));
+  var same = rests.every(function(x){ return x === rests[0]; });
+  var stations = ids.map(function(gi, n){ return letter + (n + 1); }).join(', ');
+  var html = '<div class="card ss"><div class="row"><h2>Superset '+esc(letter)+'</h2><span class="sp"></span><span class="pill">'+(same && rests.length ? 'rest '+LiftPlan.formatRest(rests[0])+' after round' : 'rest after round')+'</span></div>';
+  html += '<div class="mut">Alternate '+esc(stations)+'. Rest starts after the round.</div>';
+  ids.forEach(function(gi, n){
+    var g = list[gi];
+    var notes = exerciseNotes(g, true), last = lastLine(b, g);
+    if (last || notes.length) {
+      html += '<div class="ss-name">'+esc(letter+(n+1)+' · '+g.exercise)+'</div>';
+      html += last;
+      notes.forEach(function(t){ html += '<div class="note">'+esc(t)+'</div>'; });
+    }
+    if (showW) LiftPlan.visibleWarmups(g.warmups, g.exercise, catalogType(g.exercise)).forEach(function(x){
+      var idx = (g.warmups||[]).indexOf(x);
+      html += setRow(gi, 'u'+idx, x, exInfo(g.exercise), true, '', '');
+    });
+  });
+  for (r = 0; r < max; r++){
+    html += '<div class="ss-round"><div class="round-lbl">Round '+(r+1)+(same ? '' : ' · rest '+LiftPlan.formatRest(rests[r]))+'</div>';
+    ids.forEach(function(gi, n){
+      var g = list[gi], x = g.sets[r];
+      if (!x) return;
+      html += '<div class="ss-name">'+esc(g.exercise)+'</div>';
+      html += setRow(gi, String(r), x, exInfo(g.exercise), false, letter+(n+1), '');
+    });
+    html += '</div>';
+  }
+  html += '<div class="row ss-add" style="margin-top:8px">';
+  ids.forEach(function(gi){ html += '<button onclick="addSet('+gi+')">+ '+esc(list[gi].exercise)+'</button>'; });
+  html += '</div></div>';
+  return html;
+}
 function warmupsOn(){ var o = store.get('lt_showw', null); return o===null ? S.boot.session.showWarmups!==false : !!o; }
 function toggleWarmups(){ store.set('lt_showw', !warmupsOn()); render(); }
 function rowOf(gi, sid){ var g = S.boot.session.exercises[gi]; sid=String(sid); return sid[0]==='u' ? (g.warmups||[])[+sid.slice(1)] : g.sets[+sid]; }
-function setRow(gi, sid, x, e, wu){
+function setRow(gi, sid, x, e, wu, label, restNote){
   var d = x.done, a = gi+',\''+sid+'\'', id = gi+'_'+sid;
   var wv = d ? d.weight : (x._w!=null ? x._w : x.targetWeight);
   var rv = d ? d.reps : (x._r!=null ? x._r : (parseInt(x.targetReps,10)||''));
   var tgt = (x.targetWeight!==''||x.targetReps) ? (wu?'Warm-up ':'target ')+(x.targetWeight!==''&&x.targetWeight?x.targetWeight+' × ':'')+esc(x.targetReps) : (wu?'Warm-up':'extra set');
   if (wu && x.note) tgt += ' · '+esc(x.note);
-  return '<div class="set'+(wu?' wu':'')+(d?' done':'')+'"><div class="sn">'+(wu?'W'+String(x.set).slice(1):x.set)+'</div>'+
+  if (restNote) tgt += ' · rest '+restNote;
+  var badge = label || (wu ? 'W'+String(x.set).replace(/^w/i,'') : x.set);
+  return '<div class="set'+(wu?' wu':'')+(label?' station':'')+(d?' done':'')+'" data-ex="'+esc(e.name)+'" data-set="'+esc(x.set)+'"><div class="sn">'+esc(badge)+'</div>'+
     '<div><div class="step"><button onclick="bump('+a+',\'w\',-1)">−</button><input id="w_'+id+'" type="number" inputmode="decimal" step="any" value="'+esc(wv)+'" oninput="plate('+a+')"><button onclick="bump('+a+',\'w\',1)">+</button></div><div class="lbl">lb</div></div>'+
     '<div><div class="step"><button onclick="bump('+a+',\'r\',-1)">−</button><input id="r_'+id+'" type="number" inputmode="numeric" value="'+esc(rv)+'"><button onclick="bump('+a+',\'r\',1)">+</button></div><div class="lbl">reps</div></div>'+
     '<button class="chk" onclick="logSet('+a+')">'+(d?'✓':'○')+'</button>'+
@@ -344,7 +426,9 @@ function logSet(gi, si){
   if (x.done && String(x.done.weight)===String(w) && String(x.done.reps)===String(r)) {
     if (!confirm('Undo this set?')) return;
     queue({ clientId:x.done.clientId, date:b.date, exercise:g.exercise, set:x.set, deleted:true });
-    x.done = null; render(); return;
+    x.done = null;
+    if (!wu && LiftPlan.sessionBlocks(b.session.exercises, blockOpts()).some(function(bl){ return bl.kind==='superset' && bl.indexes.indexOf(gi)>=0; })) stopTimer();
+    render(); return;
   }
   if (!num(r)) { toast('Enter reps'); return; }
   var item = { clientId: x.done ? x.done.clientId : uid(), date:b.date, session:b.session.session, exercise:g.exercise, set:x.set, weight:w===''?'':num(w), reps:num(r), notes: wu?'Warm-up':'', ts:Date.now() };
@@ -352,7 +436,10 @@ function logSet(gi, si){
   x.done = { clientId:item.clientId, weight:item.weight, reps:item.reps, pending:true };
   queue(item);
   render();
-  if (!wasDone) startTimer(wu ? (num(b.settings.rest_warmup_sec)||60) : restFor(g), g.exercise + (wu?' warm-up':''));
+  if (!wasDone) {
+    var action = LiftPlan.workRestAction(b.session.exercises, gi, wu ? 0 : +si, wu, planOpts, blockOpts());
+    if (action.start) startTimer(action.warmup ? (num(b.settings.rest_warmup_sec)||60) : action.seconds, action.label);
+  }
 }
 function queue(item){
   var q = store.get('lt_queue', []).filter(function(i){ return i.clientId !== item.clientId; });

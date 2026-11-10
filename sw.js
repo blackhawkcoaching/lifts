@@ -2,8 +2,8 @@
 // HTML is always revalidated. fetch() inside a worker follows GitHub Pages'
 // Cache-Control: max-age=600, which kept a home-screen phone on the previous
 // index.html (the one that opened today's date and never caught up).
-var CACHE = 'lifts-shell-v3';
-var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
+var CACHE = 'lifts-shell-v4';
+var SHELL = ['./', 'index.html', 'plan.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
 });
