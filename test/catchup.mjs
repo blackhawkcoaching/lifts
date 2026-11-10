@@ -12,6 +12,7 @@ const puppeteer = require('puppeteer-core');
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const html = readFileSync(ROOT + 'index.html');
+const planJs = readFileSync(ROOT + 'plan.js');
 const sw = readFileSync(ROOT + 'sw.js');
 const manifest = readFileSync(ROOT + 'manifest.webmanifest');
 const icon180 = readFileSync(ROOT + 'icon-180.png');
@@ -84,7 +85,7 @@ async function appServer() {
       return;
     }
     const file = u.pathname === '/' ? '/index.html' : u.pathname;
-    const body = file === '/index.html' ? html : file === '/sw.js' ? sw : file === '/manifest.webmanifest' ? manifest : file === '/icon-180.png' ? icon180 : file === '/icon-512.png' ? icon512 : null;
+    const body = file === '/index.html' ? html : file === '/plan.js' ? planJs : file === '/sw.js' ? sw : file === '/manifest.webmanifest' ? manifest : file === '/icon-180.png' ? icon180 : file === '/icon-512.png' ? icon512 : null;
     if (!body) { res.statusCode = 404; res.end('no'); return; }
     const type = extname(file) === '.png' ? 'image/png' : extname(file) === '.js' ? 'text/javascript' : extname(file) === '.webmanifest' ? 'application/manifest+json' : 'text/html; charset=utf-8';
     res.setHeader('content-type', type);
@@ -326,6 +327,7 @@ async function runSw() {
   const server = await listen(function (req, res) {
     const u = new URL(req.url, 'http://127.0.0.1');
     if (u.pathname === '/sw.js') { res.setHeader('content-type', 'text/javascript'); res.end(sw); return; }
+    if (u.pathname === '/plan.js') { res.setHeader('content-type', 'text/javascript'); res.end(planJs); return; }
     if (u.pathname === '/sw-harness.html') {
       res.setHeader('content-type', 'text/html');
       res.end('<!doctype html><title>sw</title><script>navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"});</script>');
@@ -351,7 +353,7 @@ async function runSw() {
   }
   await new Promise(function (r) { setTimeout(r, 300); });
   const keys = await page.evaluate(function () { return caches.keys(); });
-  assert(keys.indexOf('lifts-shell-v3') !== -1, 'cache version ' + keys.join(','));
+  assert(keys.indexOf('lifts-shell-v4') !== -1, 'cache version ' + keys.join(','));
   await page.setOfflineMode(true);
   const offline = await page.evaluate(function () { return fetch('/index.html').then(function (r) { return r.text(); }); });
   assert(offline === 'SHELL-V1', 'offline shell ' + offline);
