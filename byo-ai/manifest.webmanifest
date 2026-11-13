@@ -1,0 +1,14 @@
+{
+  "name": "Black Hawk Coaching — Workout log",
+  "short_name": "BH Lifts",
+  "description": "Private workout log. Bring a plan from your own AI.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f3f0",
+  "theme_color": "#141414",
+  "icons": [
+    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

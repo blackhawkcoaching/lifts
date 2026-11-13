@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "liftplan-0.1.schema.json",
+  "title": "liftplan 0.1",
+  "description": "Bring-your-own-AI strength plan. Workout logging only. Extra fields are ignored.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["format", "version", "name", "unit", "program"],
+  "properties": {
+    "format": { "const": "liftplan" },
+    "version": { "const": "0.1" },
+    "name": { "type": "string", "minLength": 1 },
+    "unit": { "enum": ["lb", "kg"] },
+    "note": { "type": "string" },
+    "oneRepMaxes": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+    },
+    "program": { "$ref": "#/$defs/program" }
+  },
+  "$defs": {
+    "program": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["weeks"],
+      "properties": {
+        "weeks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/week" }
+        },
+        "progressionDefaults": { "$ref": "#/$defs/progressionDefaults" }
+      }
+    },
+    "week": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["week", "days"],
+      "properties": {
+        "week": { "type": "integer", "minimum": 1 },
+        "note": { "type": "string" },
+        "days": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/day" }
+        }
+      }
+    },
+    "day": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "name", "exercises"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "weekday": { "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+        "note": { "type": "string" },
+        "exercises": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/exercise" }
+        }
+      }
+    },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "order", "name", "equipment", "sets"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "order": { "type": "integer", "minimum": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "equipment": { "enum": ["barbell", "dumbbell", "machine", "bodyweight"] },
+        "superset": {
+          "anyOf": [
+            { "type": "string", "minLength": 1, "maxLength": 4 },
+            { "type": "null" }
+          ]
+        },
+        "note": { "type": "string" },
+        "sets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/set" }
+        },
+        "progression": { "$ref": "#/$defs/progression" }
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["set", "reps", "restSec"],
+      "properties": {
+        "set": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "pattern": "^W[1-9][0-9]*$" }
+          ]
+        },
+        "reps": { "type": "string", "pattern": "^[1-9][0-9]?(?:\\s*-\\s*[1-9][0-9]?)?$" },
+        "load": { "type": ["number", "null"], "minimum": 0 },
+        "rpe": { "type": ["number", "null"], "minimum": 1, "maximum": 10 },
+        "percent1rm": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 100 },
+        "restSec": { "type": "integer", "minimum": 0, "maximum": 1800 },
+        "note": { "type": "string" },
+        "warmup": { "type": "boolean" }
+      }
+    },
+    "progression": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["when"],
+      "properties": {
+        "when": { "const": "allSetsHitTarget" },
+        "addLoad": { "type": "number", "exclusiveMinimum": 0 },
+        "holdWithinReps": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "holdRpeOver": { "type": "number", "minimum": 0, "maximum": 3 },
+        "ifMiss": { "enum": ["hold", "backoff"] },
+        "backoff": { "$ref": "#/$defs/backoff" }
+      }
+    },
+    "backoff": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "afterMisses": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "dropPercent": { "type": "number", "minimum": 1, "maximum": 50 }
+      }
+    },
+    "progressionDefaults": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "holdWithinReps": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "holdRpeOver": { "type": "number", "minimum": 0, "maximum": 3 },
+        "ifMiss": { "enum": ["hold", "backoff"] },
+        "backoff": { "$ref": "#/$defs/backoff" },
+        "increments": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "barbell": { "type": "number", "minimum": 0 },
+            "dumbbell": { "type": "number", "minimum": 0 },
+            "machine": { "type": "number", "minimum": 0 },
+            "bodyweight": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,40}$" }
+  }
+}
