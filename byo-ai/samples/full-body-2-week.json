@@ -1,0 +1,328 @@
+{
+  "format": "liftplan",
+  "version": "0.1",
+  "name": "Full Body A/B/C — 2 weeks",
+  "unit": "lb",
+  "note": "Sample a model might return for three lifting days and a full-body goal. Not a coaching prescription.",
+  "oneRepMaxes": {
+    "Back Squat": 315
+  },
+  "program": {
+    "progressionDefaults": {
+      "holdWithinReps": 1,
+      "holdRpeOver": 1,
+      "ifMiss": "backoff",
+      "backoff": { "afterMisses": 2, "dropPercent": 10 },
+      "increments": { "barbell": 5, "dumbbell": 2.5, "machine": 10, "bodyweight": 0 }
+    },
+    "weeks": [
+      {
+        "week": 1,
+        "days": [
+          {
+            "id": "w1-mon",
+            "name": "Squat and Bench",
+            "weekday": "mon",
+            "note": "Heavy lower and a press. Rest the full clock on the work sets.",
+            "exercises": [
+              {
+                "id": "squat",
+                "order": 1,
+                "name": "Back Squat",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": "W1", "reps": "5", "load": 45, "restSec": 60, "note": "Empty bar" },
+                  { "set": "W2", "reps": "5", "load": 135, "restSec": 90 },
+                  { "set": 1, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 }
+                ],
+                "progression": { "when": "allSetsHitTarget" }
+              },
+              {
+                "id": "bench",
+                "order": 2,
+                "name": "Bench Press",
+                "equipment": "barbell",
+                "superset": null,
+                "note": "Pause on the chest.",
+                "sets": [
+                  { "set": 1, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 }
+                ]
+              },
+              {
+                "id": "db-row",
+                "order": 3,
+                "name": "Dumbbell Row",
+                "equipment": "dumbbell",
+                "superset": "A",
+                "note": "Load is one dumbbell.",
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 },
+                  { "set": 2, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 },
+                  { "set": 3, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 }
+                ]
+              },
+              {
+                "id": "chin",
+                "order": 4,
+                "name": "Chin-up",
+                "equipment": "bodyweight",
+                "superset": "A",
+                "note": "Dead hang between reps.",
+                "sets": [
+                  { "set": 1, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "w1-wed",
+            "name": "Hinge and Press",
+            "weekday": "wed",
+            "exercises": [
+              {
+                "id": "rdl",
+                "order": 1,
+                "name": "Romanian Deadlift",
+                "equipment": "barbell",
+                "superset": null,
+                "note": "Stop if the low back rounds.",
+                "sets": [
+                  { "set": 1, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 },
+                  { "set": 2, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 },
+                  { "set": 3, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 }
+                ]
+              },
+              {
+                "id": "ohp",
+                "order": 2,
+                "name": "Overhead Press",
+                "equipment": "barbell",
+                "superset": null,
+                "note": "No leg drive.",
+                "sets": [
+                  { "set": 1, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 }
+                ]
+              },
+              {
+                "id": "leg-press",
+                "order": 3,
+                "name": "Leg Press",
+                "equipment": "machine",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 },
+                  { "set": 2, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 },
+                  { "set": 3, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "w1-fri",
+            "name": "Pull and Curl",
+            "weekday": "fri",
+            "note": "Superset the dumbbell bench with the row. One rest after each round.",
+            "exercises": [
+              {
+                "id": "db-bench",
+                "order": 1,
+                "name": "Dumbbell Bench",
+                "equipment": "dumbbell",
+                "superset": "A",
+                "note": "Load is one dumbbell.",
+                "sets": [
+                  { "set": 1, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 },
+                  { "set": 2, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 },
+                  { "set": 3, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 }
+                ]
+              },
+              {
+                "id": "seated-row",
+                "order": 2,
+                "name": "Seated Row",
+                "equipment": "machine",
+                "superset": "A",
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 }
+                ]
+              },
+              {
+                "id": "curl",
+                "order": 3,
+                "name": "Barbell Curl",
+                "equipment": "barbell",
+                "superset": null,
+                "note": "No swing.",
+                "sets": [
+                  { "set": 1, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "week": 2,
+        "note": "Same movements and the same starting loads. After week 1 is logged, the app replaces these loads.",
+        "days": [
+          {
+            "id": "w2-mon",
+            "name": "Squat and Bench",
+            "weekday": "mon",
+            "exercises": [
+              {
+                "id": "squat",
+                "order": 1,
+                "name": "Back Squat",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": "W1", "reps": "5", "load": 45, "restSec": 60, "note": "Empty bar" },
+                  { "set": "W2", "reps": "5", "load": 135, "restSec": 90 },
+                  { "set": 1, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": null, "percent1rm": 75, "rpe": 8, "restSec": 180 }
+                ]
+              },
+              {
+                "id": "bench",
+                "order": 2,
+                "name": "Bench Press",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": 155, "rpe": 8, "restSec": 180 }
+                ]
+              },
+              {
+                "id": "db-row",
+                "order": 3,
+                "name": "Dumbbell Row",
+                "equipment": "dumbbell",
+                "superset": "A",
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 },
+                  { "set": 2, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 },
+                  { "set": 3, "reps": "10", "load": 40, "rpe": 8, "restSec": 60 }
+                ]
+              },
+              {
+                "id": "chin",
+                "order": 4,
+                "name": "Chin-up",
+                "equipment": "bodyweight",
+                "superset": "A",
+                "sets": [
+                  { "set": 1, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "5-8", "load": null, "rpe": 8, "restSec": 90 }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "w2-wed",
+            "name": "Hinge and Press",
+            "weekday": "wed",
+            "exercises": [
+              {
+                "id": "rdl",
+                "order": 1,
+                "name": "Romanian Deadlift",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 },
+                  { "set": 2, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 },
+                  { "set": 3, "reps": "8", "load": 185, "rpe": 7, "restSec": 150 }
+                ]
+              },
+              {
+                "id": "ohp",
+                "order": 2,
+                "name": "Overhead Press",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 },
+                  { "set": 2, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 },
+                  { "set": 3, "reps": "5", "load": 95, "rpe": 8, "restSec": 180 }
+                ]
+              },
+              {
+                "id": "leg-press",
+                "order": 3,
+                "name": "Leg Press",
+                "equipment": "machine",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 },
+                  { "set": 2, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 },
+                  { "set": 3, "reps": "10", "load": 270, "rpe": 8, "restSec": 120 }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "w2-fri",
+            "name": "Pull and Curl",
+            "weekday": "fri",
+            "exercises": [
+              {
+                "id": "db-bench",
+                "order": 1,
+                "name": "Dumbbell Bench",
+                "equipment": "dumbbell",
+                "superset": "A",
+                "sets": [
+                  { "set": 1, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 },
+                  { "set": 2, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 },
+                  { "set": 3, "reps": "8-10", "load": 50, "rpe": 8, "restSec": 75 }
+                ]
+              },
+              {
+                "id": "seated-row",
+                "order": 2,
+                "name": "Seated Row",
+                "equipment": "machine",
+                "superset": "A",
+                "sets": [
+                  { "set": 1, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "10", "load": 120, "rpe": 8, "restSec": 90 }
+                ]
+              },
+              {
+                "id": "curl",
+                "order": 3,
+                "name": "Barbell Curl",
+                "equipment": "barbell",
+                "superset": null,
+                "sets": [
+                  { "set": 1, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 },
+                  { "set": 2, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 },
+                  { "set": 3, "reps": "8", "load": 65, "rpe": 8, "restSec": 90 }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
